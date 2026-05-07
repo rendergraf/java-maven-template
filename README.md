@@ -3,35 +3,144 @@
 Template genérico de proyecto Java con Maven, arquitectura MVC,
 excepciones propias, persistencia en CSV y validaciones comunes.
 
-Estructura pensada para ser clonada y adaptada a cualquier proyecto
-de gestión (usuarios, socios, actividades, inventario, etc.)
+Incluye un proyecto de ejemplo completo: **CuinaLab - Escuela de Cocina**
+(un sistema de gestión de cursos y alumnos).
+
+---
+
+## Diagrama de arquitectura del sistema
+
+```mermaid
+graph TB
+    subgraph View["Capa view"]
+        Menu["Menu.java"]
+        AskData["AskData.java"]
+    end
+
+    subgraph Controller["Capa controller"]
+        Gestor["GestorCuinaLab.java"]
+    end
+
+    subgraph Model["Capa model"]
+        Curs["Curs.java<br/>(abstracta)"]
+        Presencial["CursPresencial.java"]
+        Online["CursOnline.java"]
+        Alumne["Alumne.java"]
+        DiaSemana["DiaSemana.java<br/>(enum)"]
+        Plataforma["Plataforma.java<br/>(enum)"]
+    end
+
+    subgraph Exception["Capa exception"]
+        CuinaLabEx["CuinaLabException.java"]
+        PersistenciaEx["PersistenciaException.java"]
+    end
+
+    subgraph Persistence["Capa persistence"]
+        Persistencia["PersistenciaAlumnes.java"]
+    end
+
+    subgraph Data["Fichero externo"]
+        Students["students.txt"]
+    end
+
+    User((Usuario)) -->|entrada| AskData
+    User -->|selecciona opción| Menu
+    Menu -->|1-6| Gestor
+    Gestor -->|lanza| CuinaLabEx
+    Gestor -->|lanza| PersistenciaEx
+    Gestor -->|crea/consulta| Curs
+    Gestor -->|crea/consulta| Alumne
+    Curs -.->|hereda| Presencial
+    Curs -.->|hereda| Online
+    Presencial -->|usa| DiaSemana
+    Online -->|usa| Plataforma
+    Gestor -->|guarda/carga| Persistencia
+    Persistencia -->|lee| Students
+```
+
+## Diagrama de flujo del menú
+
+```mermaid
+flowchart TD
+    Inicio([Inicio app]) --> Cargar["Cargar alumnos<br/>desde students.txt"]
+    Cargar --> Menu{"Mostrar menú"}
+    Menu -->|1| RegCurso["Registrar curso<br/>- Código, nombre, plazas, precio<br/>- Presencial (aula, material, día)<br/>- Online (plataforma, sesiones)"]
+    Menu -->|2| RegAlumno["Registrar alumno<br/>- DNI, nombre, apellidos, edad"]
+    Menu -->|3| Insc["Inscribir alumno a curso<br/>- Validar DNI existe<br/>- Validar curso existe<br/>- Validar edad mínima<br/>- Validar plazas disponibles<br/>- Evitar duplicados"]
+    Menu -->|4| Info["Info alumno<br/>- Datos personales<br/>- Cursos donde está inscrito"]
+    Menu -->|5| Escuela["Ver escuela<br/>- Todos los cursos ordenados<br/>- Plazas ocupadas/libres<br/>- Totales"]
+    Menu -->|6| Salir["Salir<br/>Mensaje de despedida"]
+
+    RegCurso -->|ok| OkCurso["Curso registrado"]
+    RegCurso -->|error| Error["Mensaje de error"]
+    RegAlumno -->|ok| OkAlumno["Alumno registrado"]
+    RegAlumno -->|error| Error
+    Insc -->|ok| OkInsc["¡Inscripción realizada!"]
+    Insc -->|error| Error
+    Info -->|ok| OkInfo["Datos del alumno"]
+    Info -->|error| Error
+    Escuela --> OkEscuela["Listado completo"]
+    Salir --> Fin([Fin app])
+
+    OkCurso --> Menu
+    OkAlumno --> Menu
+    OkInsc --> Menu
+    OkInfo --> Menu
+    OkEscuela --> Menu
+    Error --> Menu
+```
 
 ---
 
 ## Estructura del proyecto
 
 ```
-src/main/java/com/template/app/
-├── controller/      → Lógica de negocio (GestorXxx.java)
-├── exception/       → Excepciones propias de la aplicación
-├── model/           → Clases del dominio (entidades, herencia)
-├── persistence/     → Lectura/escritura en ficheros CSV
-└── view/            → Interfaz de usuario (menú, entrada/salida)
-src/main/resources/  → Recursos adicionales (config, properties, etc.)
-src/test/java/       → Tests unitarios
-data/                → Directorio donde se almacenan los CSV en tiempo
-                       de ejecución (no versionado en git)
+src/main/java/com/cuinalab/app/
+├── CuinaLab.java              → Clase principal (main)
+├── controller/
+│   └── GestorCuinaLab.java    → Lógica de negocio
+├── exception/
+│   ├── CuinaLabException.java      → Errores de lógica
+│   └── PersistenciaException.java  → Errores de ficheros
+├── model/
+│   ├── Alumne.java            → Entidad alumno
+│   ├── Curs.java              → Clase abstracta curso
+│   ├── CursOnline.java        → Curso online (hereda)
+│   ├── CursPresencial.java    → Curso presencial (hereda)
+│   ├── DiaSemana.java         → Enum LUNES..VIERNES
+│   └── Plataforma.java        → Enum ZOOM, MEET, TEAMS
+├── persistence/
+│   └── PersistenciaAlumnes.java → Lectura CSV
+└── view/
+    ├── AskData.java           → Entrada validada por consola
+    └── Menu.java              → Menú interactivo
+src/main/resources/            → Recursos adicionales
+src/test/java/                 → Tests unitarios
+students.txt                   → Datos de alumnos (CSV)
 ```
 
 ### Descripción de cada capa
 
 | Capa | Contenido |
 |---|---|
-| `model/` | Clases del dominio del problema. Incluye la clase abstracta base, las hijas que heredan de ella, y clases auxiliares (ej. `Usuari`, `Activitat`, `Torneig`, `CursPintura`, `Balda`, `Asignacion`). |
-| `controller/` | Clase(s) que orquestan la lógica de negocio. Se comunica con `model` para las reglas y con `persistence` para guardar/cargar datos. |
-| `view/` | Menús, pantallas e interacción con el usuario. Clase de menú principal y clase de lectura de datos (`AskData`) con validación de entrada. |
-| `persistence/` | CRUD sobre ficheros CSV usando `BufferedReader`/`BufferedWriter`. Cada entidad tiene su método de guardado/carga. |
-| `exception/` | Excepciones propias que extienden `Exception`. Separadas por ámbito (lógica de negocio vs. persistencia). |
+| `model/` | Clases del dominio: `Curs` (abstracta), `CursPresencial`, `CursOnline`, `Alumne`, enums `DiaSemana` y `Plataforma`. |
+| `controller/` | `GestorCuinaLab` orquesta la lógica de negocio: alta de cursos/alumnos, inscripciones, consultas. |
+| `view/` | `Menu` con bucle `do-while` y 6 opciones. `AskData` valida entrada de enteros, decimales, cadenas y booleanos. |
+| `persistence/` | `PersistenciaAlumnes` lee `students.txt` en formato CSV al arrancar (solo lectura). |
+| `exception/` | `CuinaLabException` para errores de negocio. `PersistenciaException` para errores de E/S. |
+
+---
+
+## Funcionalidades
+
+La aplicación ofrece un menú con 6 opciones:
+
+1. **Registrar curso** — crea un curso (presencial u online) con validaciones de código único, capacidad 5-20, precio positivo
+2. **Registrar alumno** — da de alta un alumno con DNI único, nombre, apellidos y edad 16-99
+3. **Inscribir alumno a curso** — valida existencia, plazas libres, edad mínima (menores 18 solo presencial), sin duplicados
+4. **Info alumno** — muestra datos personales y cursos inscritos
+5. **Ver escuela** — lista todos los cursos ordenados por código con plazas ocupadas/libres y totales
+6. **Salir** — cierra la aplicación
 
 ---
 
@@ -47,19 +156,20 @@ cd mi-nuevo-proyecto
 ### 2. Renombrar el package base
 
 ```bash
-# Ejemplo: cambiar de com.template.app a com.miclub.gestion
+# Ejemplo: cambiar de com.cuinalab.app a com.miclub.gestion
 mkdir -p src/main/java/com/miclub/gestion
-mv src/main/java/com/template/app/controller src/main/java/com/miclub/gestion/
-mv src/main/java/com/template/app/exception src/main/java/com/miclub/gestion/
-mv src/main/java/com/template/app/model src/main/java/com/miclub/gestion/
-mv src/main/java/com/template/app/persistence src/main/java/com/miclub/gestion/
-mv src/main/java/com/template/app/view src/main/java/com/miclub/gestion/
-rm -rf src/main/java/com/template
+mv src/main/java/com/cuinalab/app/controller src/main/java/com/miclub/gestion/
+mv src/main/java/com/cuinalab/app/exception src/main/java/com/miclub/gestion/
+mv src/main/java/com/cuinalab/app/model src/main/java/com/miclub/gestion/
+mv src/main/java/com/cuinalab/app/persistence src/main/java/com/miclub/gestion/
+mv src/main/java/com/cuinalab/app/view src/main/java/com/miclub/gestion/
+mv src/main/java/com/cuinalab/app/CuinaLab.java src/main/java/com/miclub/gestion/
+rm -rf src/main/java/com/cuinalab
 
 # Lo mismo para test
 mkdir -p src/test/java/com/miclub/gestion
-mv src/test/java/com/template/app/* src/test/java/com/miclub/gestion/
-rm -rf src/test/java/com/template
+mv src/test/java/com/cuinalab/app/* src/test/java/com/miclub/gestion/
+rm -rf src/test/java/com/cuinalab
 ```
 
 ### 3. Actualizar `pom.xml`
@@ -73,11 +183,10 @@ rm -rf src/test/java/com/template
 ### 4. Renombrar la clase principal
 
 ```bash
-mv src/main/java/com/miclub/gestion/App.java src/main/java/com/miclub/gestion/Main.java
+mv src/main/java/com/miclub/gestion/CuinaLab.java src/main/java/com/miclub/gestion/Main.java
 ```
 
-Y cambiar su contenido para que el nombre de clase coincida con el
-fichero.
+Y ajustar el nombre de clase dentro del fichero.
 
 ### 5. (Opcional) Renombrar el directorio raíz
 
@@ -93,12 +202,14 @@ cd mi-nuevo-proyecto
 
 | Aspecto | Convención |
 |---|---|
-| **Idioma** | Catalán o español, pero **consistente** en todo el código |
-| **Nombres** | Descriptivos, en camelCase (variables/métodos) y PascalCase (clases) |
-| **Colecciones** | `HashMap` para búsquedas por clave, `ArrayList` para listas ordenadas. Cada uso debe justificarse con un comentario. |
+| **Idioma** | Español, catalán o inglés, pero **consistente** en todo el código |
+| **Nombres** | Descriptivos, camelCase (variables/métodos) y PascalCase (clases) |
+| **Colecciones** | `HashMap` para búsquedas por clave, `TreeMap` para ordenación, `ArrayList` para listas. Cada uso justificado con comentario. |
 | **Excepciones** | Propias, extendiendo `Exception`, una por ámbito de error |
 | **Persistencia** | CSV con `BufferedReader`/`BufferedWriter` y captura de `IOException` envuelta en `PersistenciaException` |
-| **Herencia** | Clase abstracta base con hijas concretas que sobrescriben métodos |
+| **Herencia** | Clase abstracta base con hijas concretas que sobrescriben métodos abstractos |
+| **Bucles** | Solo `do-while` y `for`. Prohibido: `break` (excepto switch), `continue`, `exit`, bucles infinitos |
+| **Lambdas** | No permitidas (no vistas en clase) |
 
 ---
 
