@@ -213,10 +213,58 @@ cd mi-nuevo-proyecto
 
 ---
 
-## Dependencias
+## Compilar y ejecutar
 
-Ninguna. Proyecto Java base sin frameworks externos.
-Solo JDK 21+ y Maven.
+### Requisitos
+
+- **JDK 21+** — verificar con `java -version`
+- **Maven 3.8+** — verificar con `mvn --version`
+
+### Compilar
+
+```bash
+mvn clean compile
+```
+
+Si todo está correcto, muestra `BUILD SUCCESS` y genera los `.class` en `target/`.
+
+### Ejecutar (interactivo)
+
+```bash
+mvn exec:java
+```
+
+Se muestra el menú principal para interactuar por consola:
+
+```
+*** CuinaLab - Escuela de Cocina ***
+
+1. Registrar curso
+
+2. Registrar alumno
+
+3. Inscribir alumno a curso
+
+4. Info alumno
+
+5. Ver escuela
+
+6. Salir
+
+Indica qué quieres hacer:
+```
+
+### Ejecutar (prueba automatizada)
+
+Para verificar que el programa arranca y responde sin errores:
+
+```bash
+printf "5\n6\n" | mvn -q exec:java
+```
+
+Esto selecciona "Ver escuela" (sin cursos registrados) y luego "Salir".
+
+### Compilar y ejecutar en un solo paso
 
 ```bash
 mvn clean compile exec:java
